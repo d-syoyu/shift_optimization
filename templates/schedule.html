@@ -1,0 +1,105 @@
+<!-- templates/schedule.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スケジュール作成 - シフト最適化システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">シフト最適化システム</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">ホーム</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/employees">従業員管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/shifts">シフト管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/schedule">スケジュール作成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" href="/reset">リセット</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h2>スケジュール作成</h2>
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        スケジュール設定
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/schedule">
+                            <div class="mb-3">
+                                <label for="start_date" class="form-label">開始日 (YYYY-MM-DD)</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="end_date" class="form-label">終了日 (YYYY-MM-DD)</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="avoidance_pairs" class="form-label">バッティング回避ペア (ID1-ID2形式, カンマ区切り)</label>
+                                <input type="text" class="form-control" id="avoidance_pairs" name="avoidance_pairs">
+                                <small class="form-text text-muted">例: 1-3, 2-4</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">スケジュール作成</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        スケジュール結果
+                        {% if schedule_table %}
+                            <a href="/export_schedule" class="btn btn-success btn-sm">CSVでエクスポート</a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if schedule_table %}
+                            <div class="table-responsive">
+                                {{ schedule_table|safe }}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                スケジュールがまだ生成されていません。
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

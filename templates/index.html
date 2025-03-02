@@ -1,0 +1,72 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シフト最適化システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">シフト最適化システム</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">ホーム</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/employees">従業員管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/shifts">シフト管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/schedule">スケジュール作成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" href="/reset">リセット</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="jumbotron mt-4">
+            <h1 class="display-4">シフト最適化システム</h1>
+            <p class="lead">従業員の希望と制約を考慮した最適なシフトスケジュールを作成します。</p>
+            <hr class="my-4">
+            <p>以下の手順でシフトスケジュールを作成してください：</p>
+            <ol>
+                <li>従業員情報を登録する（スキル、勤務時間制限、希望シフトなど）</li>
+                <li>シフト情報を登録する（時間帯、必要人数、スキル要件など）</li>
+                <li>スケジュール作成画面でスケジュール期間を設定し、最適化を実行する</li>
+                <li>生成されたスケジュールを確認し、必要に応じてCSVでエクスポートする</li>
+            </ol>
+            <div class="mt-4">
+                <a class="btn btn-primary btn-lg" href="/employees" role="button">従業員管理</a>
+                <a class="btn btn-success btn-lg" href="/shifts" role="button">シフト管理</a>
+                <a class="btn btn-info btn-lg" href="/schedule" role="button">スケジュール作成</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
