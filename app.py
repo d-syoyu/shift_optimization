@@ -4,7 +4,8 @@ import numpy as np
 import datetime
 import os
 import io
-from shift_optimizer import ShiftOptimizer  # 先ほど作成したクラスをインポート
+from shift_optimizer import ShiftOptimizer
+from shift_request import ShiftRequestManager
 
 app = Flask(__name__)
 app.secret_key = 'shift_optimization_app'
@@ -12,6 +13,7 @@ app.secret_key = 'shift_optimization_app'
 # アプリケーションのグローバル変数
 global_optimizer = None
 global_result = None
+global_request_manager = None
 
 @app.route('/')
 def index():
@@ -245,6 +247,187 @@ def import_shifts():
     
     return redirect(url_for('shifts'))
 
+@app.route('/shift_requests', methods=['GET', 'POST'])
+def shift_requests():
+    global global_optimizer
+    global global_request_manager
+    
+    if global_optimizer is None:
+        global_optimizer = ShiftOptimizer()
+    
+    if global_request_manager is None:
+        global_request_manager = ShiftRequestManager(global_optimizer)
+    
+    if request.method == 'POST':
+        employee_id = int(request.form['employee_id'])
+        date_str = request.form['date']
+        
+        try:
+            date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+            
+            # シフトタイプの処理
+            shift_type = request.form['shift_type']
+            
+            if shift_type == 'day_off':
+                # 休みの申請
+                global_request_manager.add_request(
+                    employee_id=employee_id,
+                    date=date,
+                    is_day_off=True
+                )
+                flash(f'従業員 ID: {employee_id} の {date_str} の休み希望を登録しました。')
+                
+            elif shift_type == 'shift_pattern':
+                # シフトパターンの申請
+                shift_name = request.form['shift_name']
+                global_request_manager.add_request(
+                    employee_id=employee_id,
+                    date=date,
+                    shift_name=shift_name
+                )
+                flash(f'従業員 ID: {employee_id} の {date_str} のシフト希望 "{shift_name}" を登録しました。')
+                
+            elif shift_type == 'time_specified':
+                # 時刻指定の申請
+                start_time = request.form['start_time']
+                end_time = request.form['end_time']
+                break_time = request.form.get('break_time', '')
+                note = request.form.get('note', '')
+                
+                global_request_manager.add_request(
+                    employee_id=employee_id,
+                    date=date,
+                    start_time=start_time,
+                    end_time=end_time,
+                    break_time=break_time,
+                    note=note
+                )
+                flash(f'従業員 ID: {employee_id} の {date_str} の時刻指定シフト希望 ({start_time}-{end_time}) を登録しました。')
+            
+            return redirect(url_for('shift_requests'))
+            
+        except ValueError as e:
+            flash(f'入力エラー: {str(e)}')
+    
+    # シフト希望一覧を表示
+    requests_data = []
+    if global_request_manager and global_request_manager.shift_requests:
+        for req in global_request_manager.shift_requests:
+            row = {
+                'employee_id': req['employee_id'],
+                'date': req['date'].strftime('%Y-%m-%d'),
+                'is_day_off': '休み' if req['is_day_off'] else '',
+                'shift_name': req['shift_name'] if req['shift_name'] else '',
+                'time': ''
+            }
+            
+            if req['start_minutes'] is not None and req['end_minutes'] is not None:
+                start_time = global_optimizer._minutes_to_time(req['start_minutes'])
+                end_time = global_optimizer._minutes_to_time(req['end_minutes'] % (24 * 60))
+                row['time'] = f"{start_time} - {end_time}"
+                
+                if req['break_minutes']:
+                    break_hours = req['break_minutes'] // 60
+                    break_mins = req['break_minutes'] % 60
+                    row['time'] += f" (休憩: {break_hours}時間{break_mins}分)"
+            
+            row['note'] = req['note'] if req['note'] else ''
+            
+            # 従業員名を取得
+            for emp in global_optimizer.employees:
+                if emp['id'] == req['employee_id']:
+                    row['employee_name'] = emp['name']
+                    break
+            
+            requests_data.append(row)
+    
+    # シフトパターン一覧を取得
+    shift_patterns = []
+    if global_optimizer and global_optimizer.shifts:
+        for shift in global_optimizer.shifts:
+            if not shift['name'].startswith('Request_'):  # 申請用の自動生成シフトは除外
+                shift_patterns.append({
+                    'id': shift['id'],
+                    'name': shift['name']
+                })
+    
+    # 従業員一覧を取得
+    employees_data = []
+    if global_optimizer and global_optimizer.employees:
+        for emp in global_optimizer.employees:
+            employees_data.append({
+                'id': emp['id'],
+                'name': emp['name']
+            })
+    
+    return render_template('shift_requests.html', 
+                          requests=requests_data, 
+                          shift_patterns=shift_patterns,
+                          employees=employees_data)
+
+@app.route('/import_shift_requests', methods=['POST'])
+def import_shift_requests():
+    global global_optimizer
+    global global_request_manager
+    
+    if global_optimizer is None:
+        global_optimizer = ShiftOptimizer()
+    
+    if global_request_manager is None:
+        global_request_manager = ShiftRequestManager(global_optimizer)
+    
+    if 'file' not in request.files:
+        flash('ファイルがありません。')
+        return redirect(url_for('shift_requests'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('ファイルが選択されていません。')
+        return redirect(url_for('shift_requests'))
+    
+    if file and file.filename.endswith('.csv'):
+        try:
+            # ファイルを読み込み
+            file_content = io.StringIO(file.stream.read().decode('utf-8-sig'))
+            
+            # シフト希望をインポート
+            count = global_request_manager.import_requests_from_csv(file_content=file_content)
+            
+            flash(f'{count} 件のシフト希望をインポートしました。')
+        except Exception as e:
+            flash(f'CSVインポートエラー: {str(e)}')
+    else:
+        flash('CSVファイルを選択してください。')
+    
+    return redirect(url_for('shift_requests'))
+
+@app.route('/clear_shift_requests')
+def clear_shift_requests():
+    global global_request_manager
+    
+    if global_request_manager:
+        global_request_manager.clear_requests()
+        flash('すべてのシフト希望をクリアしました。')
+    
+    return redirect(url_for('shift_requests'))
+
+@app.route('/apply_shift_requests')
+def apply_shift_requests():
+    global global_optimizer
+    global global_request_manager
+    
+    if global_optimizer is None or global_request_manager is None:
+        flash('従業員とシフトを先に登録してください。')
+        return redirect(url_for('index'))
+    
+    try:
+        count = global_request_manager.apply_requests_to_optimizer()
+        flash(f'{count} 件のシフト希望を適用しました。スケジュール作成時に考慮されます。')
+    except Exception as e:
+        flash(f'シフト希望の適用エラー: {str(e)}')
+    
+    return redirect(url_for('schedule'))
+
 @app.route('/schedule', methods=['GET', 'POST'])
 def schedule():
     global global_optimizer
@@ -373,9 +556,11 @@ def export_schedule():
 def reset():
     global global_optimizer
     global global_result
+    global global_request_manager
     
     global_optimizer = ShiftOptimizer()
     global_result = None
+    global_request_manager = ShiftRequestManager()
     
     flash('全てのデータをリセットしました。')
     return redirect(url_for('index'))
