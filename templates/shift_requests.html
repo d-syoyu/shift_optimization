@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>申請シフト管理 - シフト最適化システム</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">シフト最適化システム</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">ホーム</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/employees">従業員管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/shifts">シフト管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/shift_requests">申請シフト</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/schedule">スケジュール作成</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-danger" href="/reset">リセット</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h2>申請シフト管理</h2>
+        <p>スタッフから申請されたシフトを登録します。</p>
+        
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        申請シフト追加
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/shift_requests">
+                            <div class="mb-3">
+                                <label for="employee_id" class="form-label">従業員</label>
+                                <select class="form-select" id="employee_id" name="employee_id" required>
+                                    <option value="">選択してください</option>
+                                    {% for employee in employees %}
+                                        <option value="{{ employee.id }}">{{ employee.id }} - {{ employee.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="date" class="form-label">日付</label>
+                                <input type="date" class="form-control" id="date" name="date" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">シフトタイプ</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="shift_type" id="type_day_off" value="day_off" checked>
+                                    <label class="form-check-label" for="type_day_off">
+                                        休み
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="shift_type" id="type_shift_pattern" value="shift_pattern">
+                                    <label class="form-check-label" for="type_shift_pattern">
+                                        シフトパターン
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="shift_type" id="type_time_specified" value="time_specified">
+                                    <label class="form-check-label" for="type_time_specified">
+                                        時刻指定
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- シフトパターン選択（シフトタイプ選択時のみ表示） -->
+                            <div class="mb-3 shift-type-input" id="shift_pattern_input" style="display: none;">
+                                <label for="shift_name" class="form-label">シフトパターン</label>
+                                <select class="form-select" id="shift_name" name="shift_name">
+                                    <option value="">選択してください</option>
+                                    {% for shift in shift_patterns %}
+                                        <option value="{{ shift.name }}">{{ shift.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- 時刻指定入力（時刻指定選択時のみ表示） -->
+                            <div class="time-specified-inputs" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="start_time" class="form-label">出勤時刻</label>
+                                    <input type="time" class="form-control" id="start_time" name="start_time">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="end_time" class="form-label">退勤時刻</label>
+                                    <input type="time" class="form-control" id="end_time" name="end_time">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="break_time" class="form-label">休憩時間（時間）</label>
+                                    <input type="number" class="form-control" id="break_time" name="break_time" step="0.5" placeholder="例: 1.0">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="note" class="form-label">備考</label>
+                                    <input type="text" class="form-control" id="note" name="note" placeholder="例: 午前のみ出勤不可">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">申請シフトを追加</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        CSVでインポート
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/import_shift_requests" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">CSVファイル</label>
+                                <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">インポート</button>
+                        </form>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                必要なヘッダー: スタッフコード, 日付, シフト名, 出勤時刻, 退勤時刻, 休憩時間, スタッフからの備考
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex mt-4">
+                    <a href="/clear_shift_requests" class="btn btn-danger me-2" onclick="return confirm('すべてのシフト希望をクリアしますか？')">すべての申請シフトをクリア</a>
+                    <a href="/apply_shift_requests" class="btn btn-success" onclick="return confirm('申請シフトをスケジュール作成に適用しますか？')">スケジュール作成に適用</a>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header">
+                        申請シフト一覧
+                    </div>
+                    <div class="card-body">
+                        {% if requests %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>従業員</th>
+                                            <th>日付</th>
+                                            <th>シフト名</th>
+                                            <th>時間</th>
+                                            <th>備考</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for req in requests %}
+                                            <tr>
+                                                <td>{{ req.employee_id }}{% if req.employee_name %} - {{ req.employee_name }}{% endif %}</td>
+                                                <td>{{ req.date }}</td>
+                                                <td>
+                                                    {% if req.is_day_off %}
+                                                        <span class="badge bg-secondary">休み</span>
+                                                    {% elif req.shift_name %}
+                                                        {{ req.shift_name }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ req.time }}</td>
+                                                <td>{{ req.note }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                申請シフトが登録されていません。
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // シフトタイプによって表示・非表示を切り替え
+        document.addEventListener('DOMContentLoaded', function() {
+            const shiftTypeRadios = document.querySelectorAll('input[name="shift_type"]');
+            const shiftPatternInput = document.getElementById('shift_pattern_input');
+            const timeSpecifiedInputs = document.querySelector('.time-specified-inputs');
+            
+            function updateInputs() {
+                const selectedType = document.querySelector('input[name="shift_type"]:checked').value;
+                
+                if (selectedType === 'shift_pattern') {
+                    shiftPatternInput.style.display = 'block';
+                    timeSpecifiedInputs.style.display = 'none';
+                } else if (selectedType === 'time_specified') {
+                    shiftPatternInput.style.display = 'none';
+                    timeSpecifiedInputs.style.display = 'block';
+                } else {
+                    // day_off
+                    shiftPatternInput.style.display = 'none';
+                    timeSpecifiedInputs.style.display = 'none';
+                }
+            }
+            
+            // 初期表示
+            updateInputs();
+            
+            // ラジオボタン変更時
+            shiftTypeRadios.forEach(radio => {
+                radio.addEventListener('change', updateInputs);
+            });
+        });
+    </script>
+</body>
+</html>
